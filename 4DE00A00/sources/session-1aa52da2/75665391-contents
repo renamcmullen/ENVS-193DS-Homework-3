@@ -1,0 +1,166 @@
+---
+title: "Homework 3"
+author: "Rena McMullen"
+format: pdf
+editor: visual
+---
+
+```{r}
+# Load packages
+library(tidyverse)
+library(janitor)
+
+# Import dataset
+urchins <- read_csv("urchin-experiment-data.csv")
+
+# Clean the data
+urchins_clean <- urchins |>
+  
+  clean_names() |>
+  
+  select(experimental_treatment, weight_g) |>
+  
+  drop_na(weight_g) |>
+  
+  mutate(
+    experimental_treatment = recode(
+      experimental_treatment,
+      "c" = "Control",
+      "n" = "Nutrient-enriched"
+    )
+  )
+
+# Run one-way ANOVA
+urchin_anova <- aov(
+  weight_g ~ experimental_treatment,
+  data = urchins_clean
+)
+
+# Display results
+summary(urchin_anova)
+```
+
+```{r}
+# Run a one-way ANOVA
+# weight_g is the response variable
+# experimental_treatment is the predictor variable
+
+urchin_anova <- aov(
+  weight_g ~ experimental_treatment,
+  data = urchins_clean
+)
+
+# View ANOVA table
+summary(urchin_anova)
+```
+
+```{r}
+# Create boxplot with jittered observations
+ggplot(urchins,
+       aes(x = experimental_treatment,
+           y = weight_g,
+           fill = experimental_treatment)) +
+  
+  # Add boxplots
+  geom_boxplot(
+    alpha = 0.7,
+    width = 0.5,
+    outlier.shape = NA
+  ) +
+  
+  # Add raw observations
+  geom_jitter(
+    width = 0.12,
+    alpha = 0.6,
+    size = 2,
+    color = "black"
+  ) +
+  
+  # Change colors from defaults
+  scale_fill_manual(
+    values = c("steelblue", "darkorange")
+  ) +
+  
+  # Label axes and title
+  labs(
+    title = "Urchin Gonad Weight by Treatment",
+    subtitle = "Most recent observation: 2026-06-09",
+    x = "Experimental Treatment",
+    y = "Gonad Weight (g)"
+  ) +
+  
+  # Clean up visual clutter
+  theme_classic() +
+  
+  # Remove legend
+  theme(legend.position = "none")
+```
+
+```{r}
+# Load packages
+library(tidyverse)
+library(janitor)
+
+# Import and clean data
+urchins <- read_csv("urchin-experiment-data.csv") |>
+  clean_names()
+
+# Create cleaned dataset
+urchins_clean <- urchins |>
+  
+  select(experimental_treatment, weight_g) |>
+  
+  drop_na(weight_g) |>
+  
+  mutate(
+    experimental_treatment = recode(
+      experimental_treatment,
+      "c" = "Control",
+      "n" = "Nutrient-enriched"
+    )
+  )
+
+# Create polished Homework 3 visualization
+ggplot(urchins_clean,
+       aes(x = experimental_treatment,
+           y = weight_g,
+           fill = experimental_treatment)) +
+  
+  # Add boxplots
+  geom_boxplot(
+    width = 0.55,
+    alpha = 0.75,
+    outlier.shape = NA
+  ) +
+  
+  # Add raw data points
+  geom_jitter(
+    width = 0.12,
+    alpha = 0.65,
+    size = 2,
+    color = "black"
+  ) +
+  
+  # Custom colors
+  scale_fill_manual(
+    values = c("steelblue4", "darkorange2")
+  ) +
+  
+  # Labels and subtitle
+  labs(
+    title = "Effects of Nutrient-Enriched Seaweed on Urchin Gonad Weight",
+    subtitle = "Most recent observation: 9 June 2026",
+    x = "Experimental Treatment",
+    y = "Urchin Gonad Weight (g)"
+  ) +
+  
+  # Clean theme
+  theme_classic() +
+  
+  # Remove legend
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title = element_text(size = 12)
+  )
+```

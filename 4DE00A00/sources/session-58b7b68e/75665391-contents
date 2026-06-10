@@ -1,0 +1,15 @@
+---
+title: "Homework 3"
+author: "Rena McMullen"
+format: pdf
+editor: visual
+---
+
+```{r}
+1 + 1
+```
+
+```{r}
+#| echo: false
+2 * 2
+```

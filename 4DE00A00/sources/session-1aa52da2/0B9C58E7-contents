@@ -1,0 +1,548 @@
+---
+title: "ENVS 193DS Final"
+author: "Rena McMullen"
+format: pdf
+editor: visual
+---
+
+Problem 1:
+
+a\) Transparent Statistical Methods
+
+In part 1 they used a logical regression. They are comparing a binary variable and a continous variable. In part 2 they are using a chi-square test, measuring the association between two variables.
+
+b\) Suggestions for Rewriting
+
+Part 1:
+
+American Avocets are more likely to use micro habitats at certain distances from the edge of the water. Thus proving that the distance to the water edge influences habitat use patterns.
+
+Part 2:
+
+Different bird species differ in their habitat. American Avocets, Foster's Terns, and Black necked Stilits all show different habitat preferences across wetlands.
+
+c\) Further Analysis
+
+An additional variable that may be influencing the American Avocet micro habitat use is the water depth. This is a continuous variable that is measuring depth by centimeters using a meter stick. Depth of water may affect the availability of food for the birds. Eating a variety of aquatic animals, the depth of water will heavily affect their ability to catch food and the presence of food in general.
+
+Problem 2:
+
+a\)
+
+```{r}
+#| message: false
+#| warning: false
+library(tidyverse)
+library(janitor)
+
+# read in data
+nests <- read_csv("nest_data_final.csv")
+
+# clean and wrangle data
+nests_clean <- nests %>%
+  clean_names() %>% 
+  select(ant_species, height_cm, alive) %>% 
+  drop_na() %>% 
+  mutate(
+    alive = factor(alive,levels = c("D", "A")),
+    ant_species = factor(
+      ant_species,
+      levels = c("RRB", "AB", "BBR")
+    ) 
+   )%>% 
+  
+  select(ant_species, height_cm, alive) %>%
+  
+  filter(ant_species %in% c("AB", "RRB", "BBR")) %>%
+  
+  # remove missing values
+  drop_na(ant_species, height_cm, alive) %>%
+  
+  mutate(
+    
+    # correctly convert alive to numeric
+    alive = ifelse(alive == 1 | alive == "1", 1, 0),
+    
+    # make ant species a factor
+    ant_species = factor(
+      ant_species,
+      levels = c("RRB", "AB", "BBR")
+    ),
+    
+    # full species names
+    ant_species_full = case_when(
+      ant_species == "RRB" ~ "Crematogaster sjostedti",
+      ant_species == "AB" ~ "Crematogaster mimosae",
+      ant_species == "BBR" ~ "Crematogaster nigriceps"
+    )
+  )
+
+# check categories
+table(nests_clean$ant_species)
+table(nests_clean$alive)
+
+# Model 1
+model_1 <- glm(
+  alive ~ height_cm + ant_species,
+  data = nests_clean,
+  family = binomial
+)
+
+# Model 2
+model_2 <- glm(
+  alive ~ height_cm * ant_species,
+  data = nests_clean,
+  family = binomial
+)
+```
+
+b\) 1 indicates that a tree contained a nest, 0 means the tree is "available" meaning there is no nest
+
+c\) Tree height is a continuous variable measured in centimeters or meters. The probability of ant nests becomes greater as height increases. Greater heights provide greater protection from predators. This information can be found in line 95-99.
+
+d\)
+
+```{r}
+#| message: false
+#| warning: false
+# create table of models
+
+models_table <- tibble(
+  model_number = c("Model 1", "Model 2"),
+  
+  predictors_included = c(
+    "Tree height + ant species",
+    "Tree height + ant species + tree height × ant species"
+  ),
+  
+  interaction_term_present = c(
+    "No",
+    "Yes"
+  ),
+  
+  model_description = c(
+    "Tests whether tree height and ant 
+    species independently affect the 
+    probability of nest occurrence.",
+    
+    "Tests whether the effect of tree 
+    height on the probability of nest 
+    occurrence differs among ant species."
+  )
+)
+
+# display table
+models_table
+```
+
+e\)
+
+```{r}
+#| message: false
+#| warning: false
+#read in data 
+nests_clean <- nests_clean %>%
+  mutate(
+    alive = if_else(alive == "yes", 1, 0)
+  )
+# Model 1
+model_1 <- glm(
+  alive ~ height_cm + ant_species,
+  data = nests_clean,
+  family = binomial,
+  control = glm.control(maxit = 100)
+)
+
+# Model 2
+model_2 <- glm(
+  alive ~ height_cm * ant_species,
+  data = nests_clean,
+  family = binomial,
+  control = glm.control(maxit = 100)
+)
+```
+
+f\)
+
+```{r}
+AIC(model_1,model_2)
+```
+
+The best model as determined by Akaikes's Information Criterion (AIC) was model 1, the interaction between tree height and ant species.
+
+g\)
+
+```{r}
+#| message: false
+#| warning: false
+library(DHARMa)
+
+# read data
+nests <- read_csv("nest_data_final.csv")
+
+# clean data
+nests_clean <- nests %>%
+  
+  clean_names() %>%
+  
+  select(ant_species, height_cm, alive) %>%
+  
+  drop_na(ant_species, height_cm, alive) %>%
+  
+  mutate(
+    
+    # convert A/D into 1/0
+    alive = if_else(
+      trimws(toupper(alive)) == "A",
+      1,
+      0
+    ),
+    
+    ant_species = factor(
+      ant_species,
+      levels = c("RRB", "AB", "BBR")
+    )
+  )
+
+# IMPORTANT: check response variable
+table(nests_clean$alive)
+
+# fit model
+model_1 <- glm(
+  alive ~ height_cm + ant_species,
+  data = nests_clean,
+  family = binomial
+)
+
+# check model
+summary(model_1)
+
+# simulate residuals
+model_1_res <- simulateResiduals(
+  fittedModel = model_1,
+  plot = FALSE
+)
+
+# diagnostic plots
+plot(model_1_res)
+
+# tests
+testUniformity(model_1_res)
+testDispersion(model_1_res)
+testOutliers(model_1_res)
+```
+
+h\)
+
+```{r}
+#| message: false
+#| warning: false
+# read in data
+nests <- read_csv("nest_data_final.csv")
+
+# clean and wrangle data
+nests_clean <- nests %>%
+  
+  clean_names() %>%
+  
+  select(ant_species, height_cm, alive) %>%
+  
+  drop_na(ant_species, height_cm, alive) %>%
+  
+  mutate(
+    
+    # convert alive/dead to binary values
+    alive = if_else(
+      trimws(toupper(alive)) == "A",
+      1,
+      0
+    ),
+    
+    # make species a factor
+    ant_species = factor(
+      ant_species,
+      levels = c("RRB", "AB", "BBR")
+    ),
+    
+    # full species names for plotting
+    ant_species_full = case_when(
+      ant_species == "RRB" ~ "Crematogaster sjostedti",
+      ant_species == "AB" ~ "Crematogaster mimosae",
+      ant_species == "BBR" ~ "Crematogaster nigriceps"
+    )
+  )
+
+# fit selected model
+model_1 <- glm(
+  alive ~ height_cm + ant_species,
+  data = nests_clean,
+  family = binomial
+)
+
+# create sequence of heights for smooth predictions
+height_seq <- seq(
+  min(nests_clean$height_cm),
+  max(nests_clean$height_cm),
+  length.out = 100
+)
+
+# create prediction dataset
+new_data <- expand.grid(
+  height_cm = height_seq,
+  ant_species = levels(nests_clean$ant_species)
+)
+
+# add full species names
+new_data <- new_data %>%
+  mutate(
+    ant_species_full = case_when(
+      ant_species == "RRB" ~ "Crematogaster sjostedti",
+      ant_species == "AB" ~ "Crematogaster mimosae",
+      ant_species == "BBR" ~ "Crematogaster nigriceps"
+    )
+  )
+
+# generate predictions with standard errors
+preds <- predict(
+  model_1,
+  newdata = new_data,
+  type = "link",
+  se.fit = TRUE
+)
+
+# calculate predicted probabilities and 95% confidence intervals
+new_data <- new_data %>%
+  mutate(
+    fit_link = preds$fit,
+    se = preds$se.fit,
+    
+    lower_link = fit_link - 1.96 * se,
+    upper_link = fit_link + 1.96 * se,
+    
+    fit = plogis(fit_link),
+    lower = plogis(lower_link),
+    upper = plogis(upper_link)
+  )
+
+# create plot
+ggplot() +
+  
+  # underlying data
+  geom_jitter(
+    data = nests_clean,
+    aes(
+      x = height_cm,
+      y = alive,
+      color = ant_species
+    ),
+    width = 5,
+    height = 0.03,
+    alpha = 0.5,
+    size = 2
+  ) +
+  
+  # confidence interval ribbon
+  geom_ribbon(
+    data = new_data,
+    aes(
+      x = height_cm,
+      ymin = lower,
+      ymax = upper
+    ),
+    fill = "skyblue",
+    alpha = 0.3
+  ) +
+  
+  # prediction line
+  geom_line(
+    data = new_data,
+    aes(
+      x = height_cm,
+      y = fit
+    ),
+    color = "darkblue",
+    linewidth = 1
+  ) +
+  
+  # separate panels for each species
+  facet_wrap(~ant_species_full) +
+  
+  # axis labels
+  labs(
+    x = "Tree height (cm)",
+    y = "Predicted probability of nest occupancy"
+  ) +
+  
+  # custom colors
+  scale_color_manual(
+    values = c(
+      "#1b9e77",
+      "#d95f02",
+      "#7570b3"
+    )
+  ) +
+  
+  # clean theme
+  theme_classic() +
+  
+  # remove legend
+  theme(
+    legend.position = "none"
+  )
+```
+
+Figure 1: Probability of Survival Dependent on Nest Height of three different Ant Species. Logistic regression curves show the probability that a nest was alive across different tree heights. The orange points represents the Crematogaster mimosae, the majority of this species nests at 200cm with a 1.00 probability rate. The purple represents crematogaster nigriceps, they nest at around 200cm with a 1.00 probability. The green is crematogaster sjostedti, they have a wider range of nest height. Lujan, E., Nielsen, R., Short, Z., Wicks, S., Nderitu Watetu, W., Malingati Khasoha, L., Palmer, T. M., Goheen, J. R., & Alston, J. M. (2023)
+
+j\)
+
+```{r}
+#| message: false
+#| warning: false
+# create new data for prediction
+new_data <- data.frame(
+  height_cm = 600,
+  ant_species = factor(
+    c("RRB", "AB", "BBR"),
+    levels = levels(nests_clean$ant_species)
+  )
+)
+
+# calculate predicted probabilities
+predictions <- predict(
+  model_1,
+  newdata = new_data,
+  type = "response"
+)
+
+# combine predictions with species names
+prediction_output <- cbind(new_data, predicted_probability = predictions)
+
+# display output
+prediction_output
+```
+
+k\) Figure one showed that all three species of ants mostly nest around 200cm and have a probability of nest occupancy of about 1.00. Both BBR and AB have a predicted probability of 1.000 at 600cm, this is because they are more aggressive species. RRB has a probability of 0.9841796. They have a lower probability because they are less aggressive. The logistic regression model indicated that both tree height and ant species influence the nest occurrence. Trees occupied by less aggressive ants tend to have more nests. This occurs because some acacia ants aggressively defend their habitat by attacking birds.
+
+Problem 3
+
+a\) The visualizations are in homework 3 are more clear and concise compared to homework 2. In homework 2, there were two different graphs that interpreted the results. One graph is jittered scatter plot that shows the spread of points. The other plot is a boxplot that shows the minimum and maximun values along with the median values. In homework 3, the plot is a combination of both plots. It shows the upper and lower quartiles, median values, and the spread of values. It gives a better sense into the distribution of points Both homeworks are communicating the same data, but homework 3 does a better job of doing it more concisely.
+
+b\) Another analysis that could be run on this data is a one-way ANOVA to test how urchin gonad weight differs between experimental treatments. The response variable would be the gonad weight, which is a continuous quantitative variable. The predictor variable is the experimental treatment, which is a catagorical variable.
+
+This analysis would answer the question how different treatments affect urchin gonad weight. The ANOVA will compare the means of a continuous response to a categorical predictor.
+
+c\)
+
+```{r}
+#| message: false
+#| warning: false
+# Load package
+library(car)
+
+# Import dataset
+urchins <- read_csv("urchin-experiment-data.csv")
+
+# Clean dataset
+urchins_clean <- urchins |>
+  
+  clean_names() |>
+  
+  select(experimental_treatment, weight_g) |>
+  
+  drop_na(weight_g) |>
+  
+  mutate(
+    experimental_treatment = dplyr::recode(
+      experimental_treatment,
+      "c" = "Control",
+      "n" = "Nutrient-enriched"
+    )
+  )
+
+# Create QQ plots to assess normality
+ggplot(urchins_clean,
+       aes(sample = weight_g)) +
+  
+  stat_qq(color = "steelblue") +
+  
+  stat_qq_line(color = "darkred") +
+  
+  facet_wrap(~ experimental_treatment) +
+  
+  theme_classic()
+
+# Test homogeneity of variance
+leveneTest(
+  weight_g ~ experimental_treatment,
+  data = urchins_clean
+)
+# Run one-way ANOVA
+urchin_anova <- aov(
+  weight_g ~ experimental_treatment,
+  data = urchins_clean
+)
+
+# Show ANOVA table
+summary(urchin_anova)
+```
+
+d\)
+
+```{r}
+#| message: false
+#| warning: false
+# Create visualization for ANOVA results
+ggplot(urchins_clean,
+       aes(x = experimental_treatment,
+           y = weight_g,
+           fill = experimental_treatment)) +
+  
+  # Add boxplots to show group distributions
+  geom_boxplot(
+    width = 0.55,
+    alpha = 0.75,
+    outlier.shape = NA
+  ) +
+  
+  # Add underlying raw data
+  geom_jitter(
+    width = 0.12,
+    alpha = 0.7,
+    size = 2,
+    color = "black"
+  ) +
+  
+  # Add group means
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    size = 4,
+    color = "red"
+  ) +
+  
+  # Customize colors
+  scale_fill_manual(
+    values = c("steelblue4", "darkorange2")
+  ) +
+  
+  # Label axes
+  labs(
+    title = "Effects of Experimental Treatment on Urchin Gonad Weight",
+    x = "Experimental Treatment",
+    y = "Urchin Gonad Weight (g)"
+  ) +
+  
+  # Use non-default theme
+  theme_classic() +
+  
+  # Remove unnecessary legend
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title = element_text(size = 12)
+  )
+```
+
+Figure 2: This plot demonstrates the effect of experimental treatment on sea urchin gonad weight in grams. The blue box represents the interquartile range for the control group. The median for this group is about 25g. The orange represents the nutrient enriched urchins. The median for this group being about 32g. The black jitter points represent the individual observations and the red points represents the mean gonad weight for each group.
+
+f\) The one-way ANOVA showed that the experimental treatment had a significant effect on urchin gonad weight (*F*₁,₇₅ = 9.49, *p* = 0.0029). Urchins that were given the treatment had larger gonads than those in the control treatment. Levene's test showed unequal variances between groups (*F*₁,₇₅ = 13.66, *p* \< 0.001), meaning the homogeneity of variance assumption for ANOVA was violated and the results should be interpreted cautiously.
